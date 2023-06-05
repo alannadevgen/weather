@@ -80,6 +80,13 @@ class WeatherRecords:
         """
         self.records = pd.DataFrame.from_records(data=self.records)
 
+    def upload_records_to_bigquery(self):
+        pass
+        # self.records.to_gbq(
+        #     destination_table="weather/weather",
+        #     project_id="weather-prediction-388920"
+        # )
+
     def run(self):
         """Execute the "pipeline" of weather records.
 
