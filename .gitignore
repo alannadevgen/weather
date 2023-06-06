@@ -130,3 +130,9 @@ dmypy.json
 
 # Mac folder
 .idea
+
+# Credentials
+credentials.json
+
+# Test files
+*.csv
