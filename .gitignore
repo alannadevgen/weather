@@ -136,3 +136,4 @@ credentials.json
 
 # Test files
 *.csv
+weather-records-*.csv
