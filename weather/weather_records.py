@@ -1,23 +1,39 @@
+from datetime import date
 import requests
 import pandas as pd
 
 
 class WeatherRecords:
-    def __init__(self, city: str = "Houilles"):
+    def __init__(
+        self,
+        project_id: str,
+        dataset: str,
+        table_name: str,
+        city: str = "Houilles",
+        upload_to_bq: bool = True,
+    ):
         """Constructor to get weather records.
 
         Parameters
         ----------
         city : str
             Name of the city to fetch the info.
+        upload_to_bq : bool
+            Is the data uploaded in BigQuery?
         """
         base_url = "https://public.opendatasoft.com/api/records"
         version = "1.0"
-        self.url = f"{base_url}/{version}/search/" \
-                   f"?dataset=arome-0025-enriched&q={city}" \
-                   f"&facet=commune&facet=code_commune" \
-                   f"&refine.commune={city}"
+        self.url = (
+            f"{base_url}/{version}/search/"
+            f"?dataset=arome-0025-enriched&q={city}"
+            f"&facet=commune&facet=code_commune"
+            f"&refine.commune={city}"
+        )
         self.records = None
+        self.upload_to_bq = upload_to_bq
+        self.project_id = project_id
+        self.dataset = dataset
+        self.table_name = table_name
 
     def get_records(self):
         return self.records
@@ -36,9 +52,7 @@ class WeatherRecords:
                 raw_request = request.json()
                 self.records = raw_request["records"]
         except RuntimeError:
-            print(
-                f"Error while calling the API : status code {request.status_code}"
-            )
+            print(f"Error while calling the API : status code {request.status_code}")
 
     def _process_records(self):
         """Process and clean the raw records.
@@ -57,8 +71,8 @@ class WeatherRecords:
             "position",
             "2_metre_relative_humidity",
             "2_metre_temperature",
-            "maximum_temperature_at_2_metres",
             "minimum_temperature_at_2_metres",
+            "maximum_temperature_at_2_metres",
             "total_precipitation",
             "10m_wind_speed",
         ]
@@ -66,7 +80,13 @@ class WeatherRecords:
             hour_record = {}
             for variable in variables:
                 if variable in record["fields"]:
-                    hour_record[variable] = record["fields"][variable]
+                    if variable == "position":
+                        latitude = record["fields"][variable][0]
+                        longitude = record["fields"][variable][1]
+                        hour_record["latitude"] = latitude
+                        hour_record["longitude"] = longitude
+                    else:
+                        hour_record[variable] = record["fields"][variable]
             day_records.append(hour_record)
         self.records = day_records
 
@@ -78,14 +98,35 @@ class WeatherRecords:
         records : pa.DataFrame
             Dataframe containing the weather records.
         """
-        self.records = pd.DataFrame.from_records(data=self.records)
+        self.records = pd.DataFrame.from_records(data=self.records).sort_values(
+            by="forecast"
+        )
 
     def upload_records_to_bigquery(self):
-        pass
-        # self.records.to_gbq(
-        #     destination_table="weather/weather",
-        #     project_id="weather-prediction-388920"
-        # )
+        """Upload data to Google BigQuery.
+
+        Create a table with the day values and append its content to the history
+        dataset.
+        """
+        self.records.to_gbq(
+            destination_table=f"{self.dataset}.{self.table_name}_history",
+            project_id=self.project_id,
+            if_exists="append",
+        )
+        self.records.to_gbq(
+            destination_table=f"{self.dataset}.{self.table_name}_day",
+            project_id=self.project_id,
+            if_exists="replace",
+        )
+
+    def save_records_local(self):
+        """Save the results in a CSV file in the /data folder.
+
+        """
+        self.records.to_csv(
+            f"data/weather-records-{date.today()}.csv",
+            index=False
+        )
 
     def run(self):
         """Execute the "pipeline" of weather records.
@@ -93,7 +134,14 @@ class WeatherRecords:
         1) Fetch the records from the API.
         2) Process the raw records to clean and neat weather records.
         3) Create a dataframe from the weather records.
+        4) Save the results (locally or in BigQuery).
         """
         self._fetch_records()
         self._process_records()
         self._records_to_dataframe()
+        if self.upload_to_bq:
+            print("Uploading data to BigQuery")
+            self.upload_records_to_bigquery()
+        else:
+            print("Data saved in local")
+            self.save_records_local()
