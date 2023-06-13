@@ -8,4 +8,3 @@ if __name__ == "__main__":
         project_id="weather-prediction-388920",
     )
     weather_records.run()
-

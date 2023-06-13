@@ -1,6 +1,7 @@
 from datetime import date
-import requests
+
 import pandas as pd
+import requests
 
 
 class WeatherRecords:
@@ -120,13 +121,8 @@ class WeatherRecords:
         )
 
     def save_records_local(self):
-        """Save the results in a CSV file in the /data folder.
-
-        """
-        self.records.to_csv(
-            f"data/weather-records-{date.today()}.csv",
-            index=False
-        )
+        """Save the results in a CSV file in the /data folder."""
+        self.records.to_csv(f"data/weather-records-{date.today()}.csv", index=False)
 
     def run(self):
         """Execute the "pipeline" of weather records.
