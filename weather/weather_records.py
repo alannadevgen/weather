@@ -1,7 +1,13 @@
+import logging
 from datetime import date
 
 import pandas as pd
 import requests
+
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 
 class WeatherRecords:
@@ -53,7 +59,9 @@ class WeatherRecords:
                 raw_request = request.json()
                 self.records = raw_request["records"]
         except RuntimeError:
-            print(f"Error while calling the API : status code {request.status_code}")
+            logger.error(
+                f"Error while calling the API : status code {request.status_code}"
+            )
 
     def _process_records(self):
         """Process and clean the raw records.
@@ -109,6 +117,7 @@ class WeatherRecords:
         Create a table with the day values and append its content to the history
         dataset.
         """
+        logger.info("Exporting data to Google BigQuery.")
         self.records.to_gbq(
             destination_table=f"{self.dataset}.{self.table_name}_history",
             project_id=self.project_id,
@@ -136,8 +145,8 @@ class WeatherRecords:
         self._process_records()
         self._records_to_dataframe()
         if self.upload_to_bq:
-            print("Uploading data to BigQuery")
+            logger.info("Uploading data to BigQuery")
             self.upload_records_to_bigquery()
         else:
-            print("Data saved in local")
+            logger.info("Data saved in local")
             self.save_records_local()
