@@ -3,16 +3,23 @@ repos:
       rev: v2.3.0
       hooks:
         -   id: check-json
+            name: Checking JSON
         -   id: check-toml
+            name: Checking TOML
         -   id: check-yaml
+            name: Checking YAML
         -   id: end-of-file-fixer
+            name: End of file fixer
         -   id: trailing-whitespace
+            name: Checking trailing whitespace
             language: python
   -   repo: https://github.com/psf/black
       rev: 22.10.0
       hooks:
         -   id: black
+            name: Code formatter
   -   repo: https://github.com/PyCQA/isort
       rev: 5.12.0
       hooks:
         -   id: isort
+            name: Modules import sorting
